@@ -91,6 +91,7 @@ func main() {
 	csv2console := flag.Bool("csv2console", true, "Write CSV data to the console")
 	logLevelPtr := flag.Int("logLevel", 3, "0 - no logging, 1 - error, 2 - warn, 3(default) - info, 4 - verbose")
 	fieldListPtr := flag.String("fieldList", "", "List of fields to report if set")
+	showFilteredPtr := flag.Bool("showFiltered", true, "Write filtered DNS entries to the console")
 
 	// SMTP Server Settings
 	smtpUsername := flag.String("smtpUsername", "", "Email server username.")
@@ -148,6 +149,7 @@ func main() {
 
 	// Sign into OpenDNS
 	Trace.Println("Username: " + *usernamePtr)
+	Trace.Println("Password: " + *passwordPtr)
 	Trace.Println("Token: " + token)
 
 	if !signIn(loginURL, token, *usernamePtr, *passwordPtr, cookieJar) {
@@ -167,10 +169,13 @@ func main() {
 	if len(*fieldListPtr) > 0 {
 		result := processCSV(csvResult, fieldListPtr)
 
+		if *showFilteredPtr && len(result) > 0 {
+			fmt.Println(result)
+		}
+
 		if *smtpUsername != "" && len(result) > 0 {
 			sendResultAsEmail(*smtpUsername, *smtpPassword, *smtpHost, *smtpFrom, *smtpTo, result)
 		}
-
 	}
 
 	// write the whole body at once
