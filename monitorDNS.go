@@ -82,6 +82,7 @@ func initLogLeve(level int) {
 }
 
 func main() {
+	const DateFormat = "2006-01-02"
 
 	// Process Command-line arguments
 	usernamePtr := flag.String("username", "", "OpenDNS Account Username.")
@@ -101,8 +102,7 @@ func main() {
 	smtpTo := flag.String("smtpTo", "", "Email to address.")
 
 	// Default date to yesterday
-	currentTime := time.Now().AddDate(0, 0, -1).UTC()
-	datePtr := flag.String("date", currentTime.Format("2006-01-02"), "Date to get results for. Defaults to yesterday. Valid values YYYY-MM-DD, yesterday, today")
+	datePtr := flag.String("date", "yesterday", "Date to get results for. Defaults to yesterday. Valid values YYYY-MM-DD, yesterday, today")
 	flag.Parse()
 
 	initLogLeve(*logLevelPtr)
@@ -116,21 +116,22 @@ func main() {
 		flag.PrintDefaults()
 		os.Exit(1)
 	} else if *networkIDPtr == "" {
+		// TODO: if no network ID is specified list networks ID's that are available for this account then exit see Notes.md
 		Error.Println("Network ID is a required field\n\n ")
 		flag.PrintDefaults()
 	}
 
 	if strings.EqualFold(*datePtr, "today") {
 		currentTime := time.Now().UTC()
-		result := currentTime.Format("2006-01-02")
+		result := currentTime.Format(DateFormat)
 		datePtr = &result
 	} else if strings.EqualFold(*datePtr, "yesterday") {
 		currentTime := time.Now().AddDate(0, 0, -1).UTC()
-		result := currentTime.Format("2006-01-02")
+		result := currentTime.Format(DateFormat)
 		datePtr = &result
 	} else if *datePtr == "" {
 		currentTime := time.Now().AddDate(0, 0, -1).UTC()
-		result := currentTime.Format("2006-01-02")
+		result := currentTime.Format(DateFormat)
 		datePtr = &result
 	}
 
@@ -417,7 +418,7 @@ func sendResultAsEmail(smtpUsername string, smtpPassword string, smtpServer stri
 	for k, v := range headers {
 		message += fmt.Sprintf("%s: %s\r\n", k, v)
 	}
-	message += "\r\n" + body
+	message += "\r\n" + body + "\r\n\r\n----\r\n Sent from OpenDNS_Monitor - https://github.com/yepher/OpenDNS_Monitor"
 
 	servername := smtpServer
 
