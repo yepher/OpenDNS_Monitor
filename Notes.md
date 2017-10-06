@@ -52,7 +52,7 @@ api_key=F5DF5551AB0325FDBD6969F6920B33ED&method=account_signin&username=[YOUR_AC
 
 ## Get Networks
 
-*Request**
+**Request**
 
 ```
 POST /v1/ HTTP/1.1
@@ -83,6 +83,26 @@ api_key=F5DF5551AB0325FDBD6969F6920B33ED&method=networks_get&token=[TOKEN]
 	}
 }
 
+```
+
+**Auth Error Response**
+
+```
+{
+    "status": "failure",
+    "error": 1004,
+    "error_message": "Authentication required"
+}
+```
+
+**Bad Token Error Response**
+
+```
+{
+    "status": "failure",
+    "error": 1002,
+    "error_message": "Unknown API key"
+}
 ```
 
 

@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"crypto/tls"
 	"encoding/csv"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -24,6 +25,37 @@ import (
 	"strings"
 	"time"
 )
+
+// APIKey is used for the OpenDNS http queries
+const APIKey = "F5DF5551AB0325FDBD6969F6920B33ED"
+
+// APIBaseURL this is the common part of the url for all API requests
+const APIBaseURL = "https://api.opendns.com/v1/"
+
+// TokenResponse is the structure of the Token response API
+type TokenResponse struct {
+	Status   string `json:"status"`
+	Response struct {
+		Token string `json:"token"`
+	} `json:"response"`
+	Error        int    `json:"error"`
+	ErrorMessage string `json:"error_message"`
+}
+
+// NetworkObject defines the content of the NetworkResponse
+type NetworkObject struct {
+	Dynamic   bool   `json:"dynamic"`
+	Label     string `json:"label"`
+	IPAddress string `json:"ip_address"`
+}
+
+// NetworksResponse carries the response for the networks API
+type NetworksResponse struct {
+	Status       string                   `json:"status"`
+	Response     map[string]NetworkObject `json:"response"`
+	Error        int                      `json:"error"`
+	ErrorMessage string                   `json:"error_message"`
+}
 
 var (
 	// Trace the trace logger
@@ -87,7 +119,7 @@ func main() {
 	// Process Command-line arguments
 	usernamePtr := flag.String("username", "", "OpenDNS Account Username.")
 	passwordPtr := flag.String("password", "", "OpenDNS Account Password.")
-	networkIDPtr := flag.String("networkid", "", "OpenDNS Network ID.")
+	networkIDPtr := flag.String("networkid", "", "The networkID to report on. If not specified a list of available networks will be listed.")
 	outputFilePtr := flag.String("outputfile", "/tmp/dnsoutput.csv", "Where to write output csv")
 	csv2console := flag.Bool("csv2console", true, "Write CSV data to the console")
 	logLevelPtr := flag.Int("logLevel", 3, "0 - no logging, 1 - error, 2 - warn, 3(default) - info, 4 - verbose")
@@ -115,10 +147,6 @@ func main() {
 		Error.Println("Password is a required field\n\n ")
 		flag.PrintDefaults()
 		os.Exit(1)
-	} else if *networkIDPtr == "" {
-		// TODO: if no network ID is specified list networks ID's that are available for this account then exit see Notes.md
-		Error.Println("Network ID is a required field\n\n ")
-		flag.PrintDefaults()
 	}
 
 	if strings.EqualFold(*datePtr, "today") {
@@ -159,6 +187,39 @@ func main() {
 	}
 	Trace.Printf("Cookies: %v\n", cookieJar)
 	Trace.Println("Login Success")
+
+	if *networkIDPtr == "" {
+		emptyCookieJar, _ := cookiejar.New(nil)
+		signInResult := apiSignIn(*usernamePtr, *passwordPtr, emptyCookieJar)
+		Trace.Println(signInResult)
+		if signInResult.ErrorMessage != "" {
+			Error.Printf("ERROR: Sign In failed - code:(%d) message:%s\n", signInResult.Error, signInResult.ErrorMessage)
+			return
+		}
+
+		networksJSON := listNetworks(signInResult.Response.Token, emptyCookieJar)
+		Trace.Println(networksJSON)
+		if networksJSON.ErrorMessage != "" {
+
+			Error.Printf("ERROR: Sign In failed - code:(%d) message:%s\n", networksJSON.Error, networksJSON.ErrorMessage)
+			return
+		}
+
+		Info.Printf("Network ID not provdide so listing available networks:\n")
+		for k, v := range networksJSON.Response {
+			//fmt.Printf("key[%s] value[%v]\n", k, v)
+			fmt.Printf("NetworkId - %s\n", k)
+			isDynamic := "false"
+			if v.Dynamic {
+				isDynamic = "true"
+			}
+			fmt.Printf("\tLabel: %s\n", v.Label)
+			fmt.Printf("\tDynamic: %s\n", isDynamic)
+			fmt.Printf("\tIP Address: %s\n\n", v.IPAddress)
+		}
+
+		return
+	}
 
 	csvResult := fetchTopDomains(csvURL, *networkIDPtr, *datePtr, cookieJar)
 
@@ -337,6 +398,25 @@ func doGetRequest(url string, bodyString string, cookieJar *cookiejar.Jar) strin
 	}
 
 	return ""
+}
+
+// https://github.com/yepher/OpenDNS_Monitor/blob/master/Notes.md#get-networks
+func apiSignIn(username string, password string, cookieJar *cookiejar.Jar) TokenResponse {
+	bodyString := "api_key=" + APIKey + "&method=account_signin&username=" + username + "&password=" + password
+	response := doGetRequest(APIBaseURL, bodyString, cookieJar)
+	tokenResponse := TokenResponse{}
+	json.Unmarshal([]byte(response), &tokenResponse)
+	return tokenResponse
+}
+
+// https://github.com/yepher/OpenDNS_Monitor/blob/master/Notes.md#get-networks
+func listNetworks(token string, cookieJar *cookiejar.Jar) NetworksResponse {
+	domainURL := "https://api.opendns.com/v1/"
+	bodyString := "api_key=" + APIKey + "&method=networks_get&token=" + "8B55C3C081047F6FBF8183C3C78FB848"
+	response := doGetRequest(domainURL, bodyString, cookieJar)
+	networkResponse := NetworksResponse{}
+	json.Unmarshal([]byte(response), &networkResponse)
+	return networkResponse
 }
 
 func processCSV(in string, fieldListPtr *string) string {
