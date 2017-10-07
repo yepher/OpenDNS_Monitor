@@ -122,7 +122,7 @@ func main() {
 	networkIDPtr := flag.String("networkid", "", "The networkID to report on. If not specified a list of available networks will be listed.")
 	outputFilePtr := flag.String("outputfile", "/tmp/dnsoutput.csv", "Where to write output csv")
 	csv2console := flag.Bool("csv2console", true, "Write CSV data to the console")
-	logLevelPtr := flag.Int("logLevel", 3, "0 - no logging, 1 - error, 2 - warn, 3(default) - info, 4 - verbose")
+	logLevelPtr := flag.Int("logLevel", 3, "0 - no logging, 1 - error, 2 - warn, 3 - info, 4 - verbose")
 	fieldListPtr := flag.String("fieldList", "", "List of fields to report if set")
 	showFilteredPtr := flag.Bool("showFiltered", true, "Write filtered DNS entries to the console")
 
@@ -134,7 +134,7 @@ func main() {
 	smtpTo := flag.String("smtpTo", "", "Email to address.")
 
 	// Default date to yesterday
-	datePtr := flag.String("date", "yesterday", "Date to get results for. Defaults to yesterday. Valid values YYYY-MM-DD, yesterday, today")
+	datePtr := flag.String("date", "yesterday", "Date to get results for. Valid values YYYY-MM-DD, yesterday, today")
 	flag.Parse()
 
 	initLogLeve(*logLevelPtr)
@@ -412,7 +412,7 @@ func apiSignIn(username string, password string, cookieJar *cookiejar.Jar) Token
 // https://github.com/yepher/OpenDNS_Monitor/blob/master/Notes.md#get-networks
 func listNetworks(token string, cookieJar *cookiejar.Jar) NetworksResponse {
 	domainURL := "https://api.opendns.com/v1/"
-	bodyString := "api_key=" + APIKey + "&method=networks_get&token=" + "8B55C3C081047F6FBF8183C3C78FB848"
+	bodyString := "api_key=" + APIKey + "&method=networks_get&token=" + token
 	response := doGetRequest(domainURL, bodyString, cookieJar)
 	networkResponse := NetworksResponse{}
 	json.Unmarshal([]byte(response), &networkResponse)
